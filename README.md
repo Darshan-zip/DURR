@@ -30,9 +30,9 @@ It also provides a **PDF report** of the closest matching fan based on historica
 │ └── index.html # Frontend HTML interface
 └── README.md
 
-#HomePage
+## HomePage
 ![image](https://github.com/user-attachments/assets/a4a72330-7741-4768-a329-2a08af99bc1e)
-#Generated Report
+## Generated Report
 ![image](https://github.com/user-attachments/assets/20858efe-d9ad-4a2f-bff3-426046c17e5a)
 
 
