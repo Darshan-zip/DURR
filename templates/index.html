@@ -1,169 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
-
-  <!-- jQuery (required by DataTables) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-
-<!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
-<!-- DataTables Buttons extension CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-
-<!-- DataTables Buttons extension JS -->
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-
-<!-- JSZip (for Excel export) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
-<!-- PDFMake (optional, for PDF export) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
-<!-- HTML5 export buttons (CSV, Excel, PDF) -->
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-
-<!-- Print button -->
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
-
-
+    <meta charset="UTF-8">
+    <title>Fan Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+<body class="container py-4">
+    <h1 class="mb-4">Fan Predictor</h1>
 
-<body class="container my-4">
-  <h1>Value Finder</h1>
-  <div class="mb-3">
-  <label for="Username" class="Username-label">SQL Username</label>
-  <input type="text" class="form-control" id="username-input">
-</div>
-<div class="mb-3">
-  <label for="Password" class="Password-label">SQL Password</label>
-  <input type="text" class="form-control" id="password-input">
-</div>
-  <div class="mb-3">
-  <label for="Server" class="Server-label">SQL Server</label>
-  <input type="text" class="form-control" id="server-input">
-</div>
-  <div class="mb-3">
-  <label for="Database" class="Database-label">SQL Database</label>
-  <input type="text" class="form-control" id="database-input">
-</div>
+    <div class="mb-3">
+        <label for="pressure" class="form-label">Static Pressure (Pa):</label>
+        <input type="number" class="form-control" id="pressure" required>
+    </div>
 
-<div class="mb-3">
-  <label for="XML" class="XML-label">XML File Path</label>
-  <input type="text" class="form-control" id="XML-input">
-</div>
+    <div class="mb-3">
+        <label for="flow" class="form-label">Flow Volume (m³/h):</label>
+        <input type="number" class="form-control" id="flow" required>
+    </div>
 
-<div class="mb-3">
-  <label for="date" class="date-label">Select Date and Time (From)</label>
-  <input type="datetime-local" class="form-control" id="dtFromInput">
-</div>
-<div class="mb-3">
-  <label for="date" class="date-label">Select Date and Time (To)</label>
-  <input type="datetime-local" class="form-control" id="dtToInput">
-</div>
-<button type="button" class="btn btn-primary" onclick="convertDate()">Submit</button>
+    <div class="mb-3">
+        <label for="speed" class="form-label">Rotation Speed (1/min):</label>
+        <input type="number" class="form-control" id="speed" required>
+    </div>
 
-<p id="result"></p>
-<p id="resultTo"></p>
-<div class="table-space"></div>
-<h3 id="val-sum"></h3>
+    <button class="btn btn-primary me-2" onclick="predict()">Predict</button>
+    <button class="btn btn-secondary" onclick="generateReport()">Generate Report</button>
 
-<script>
-  function convertDate() {
-    const input = document.getElementById('dtFromInput').value;
+    <div class="mt-4">
+        <h4>Prediction Output</h4>
+        <pre id="output"></pre>
+    </div>
 
-    if (!input) {
-        document.getElementById('result').innerText = 'Please enter a datetime.';
-        return;
-    }
+    <div class="mt-4">
+        <h4>Closest Match Report</h4>
+        <pre id="report"></pre>
+        <a id="downloadLink" class="btn btn-outline-success mt-2 d-none" href="#" target="_blank">Download PDF Report</a>
+    </div>
 
-    const date = new Date(input);
+    <script>
+        async function predict() {
+            const pressure = parseFloat(document.getElementById("pressure").value);
+            const flow = parseFloat(document.getElementById("flow").value);
+            const speed = parseFloat(document.getElementById("speed").value);
 
-    const year = date.getFullYear().toString().slice(-2); 
-    const start = new Date(date.getFullYear(), 0, 0);
-    const diff = date - start;
-    const oneDay = 1000 * 60 * 60 * 24;
-    const dayOfYear = Math.floor(diff / oneDay).toString().padStart(3, '0'); // 001–366
-    const hour = date.getHours().toString().padStart(2, '0'); // 00–23
+            const res = await fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pressure, flow, speed })
+            });
 
-    const result = `${year}${dayOfYear}${hour}`;
+            const data = await res.json();
+            document.getElementById("output").innerText =
+                `Rated Power: ${data.power} kW\nManufacturer: ${data.manufacturer}`;
+        }
 
-    const inputTo= document.getElementById('dtToInput').value;
+        async function generateReport() {
+            const pressure = parseFloat(document.getElementById("pressure").value);
+            const flow = parseFloat(document.getElementById("flow").value);
+            const speed = parseFloat(document.getElementById("speed").value);
 
-    if (!inputTo) {
-        document.getElementById('resultTo').innerText = 'Please enter a datetime.';
-        return;
-    }
+            const res = await fetch("/report", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pressure, flow, speed })
+            });
 
-    const dateTo = new Date(inputTo);
+            const data = await res.json();
+            document.getElementById("report").innerText = data.report;
 
-    const yearTo = dateTo.getFullYear().toString().slice(-2); 
-    const startTo = new Date(dateTo.getFullYear(), 0, 0);
-    const diffTo = dateTo - startTo;
-    const oneDayTo = 1000 * 60 * 60 * 24;
-    const dayOfYearTo = Math.floor(diffTo / oneDayTo).toString().padStart(3, '0'); // 001–366
-    const hourTo = dateTo.getHours().toString().padStart(2, '0'); // 00–23
-
-    const resultTo = `${yearTo}${dayOfYearTo}${hourTo}`;
- 
-    document.getElementById('result').innerText = `Formatted From Date: ${result}`;
-    document.getElementById('resultTo').innerText = `Formatted To Date: ${resultTo}`;
-    let usernameV=document.getElementById('username-input').value
-    let passwordV=document.getElementById('password-input').value
-    let serverV=document.getElementById('server-input').value
-    let databaseV=document.getElementById('database-input').value
-    let XMLV=document.getElementById('XML-input').value
-
-    var entry={
-      fromDate:result,
-      toDate:resultTo,
-      username:usernameV,
-      password:passwordV,
-      server:serverV,
-      database:databaseV,
-      XML:XMLV,
-      date_time:date
-    };
-    fetch(`${window.origin}/inc`,{
-      method:'POST',
-      credentials:"include",
-      body:JSON.stringify(entry),
-      cache:"no-cache",
-      headers:new Headers({
-        "content-type":"application/json"
-      })
-    })
-    .then(function (response) {
-    if (response.status !== 200) {
-      console.log('Response was not 200');
-      return;
-    }
-    return response.json();
-  })
-  .then(function (data) {
-    console.log(data.table);
-    document.querySelector('.table-space').innerHTML = data.table;
-    document.querySelector('#val-sum').innerText = `Total Value Summary: ${data.valSum}`;
-    $('#myTable').DataTable({
-      dom: 'Bfrtip',
-      buttons: ['copy', 'csv', 'excel', 'pdf','print']
-    });
-  });
-  }
-  
-
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.min.js" integrity="sha384-7qAoOXltbVP82dhxHAUje59V5r2YsVfBafyUDxEdApLPmcdhBPg1DKg1ERo0BZlK" crossorigin="anonymous"></script>
-
-
+            const link = document.getElementById("downloadLink");
+            link.href = "/download-pdf?filename=" + encodeURIComponent(data.pdf_filename);
+            link.classList.remove("d-none");
+        }
+    </script>
 </body>
 </html>
